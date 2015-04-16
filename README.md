@@ -1,9 +1,16 @@
 # goplate
 # / : template style Front-end preprocessor for angularjs
-1) embeded css
-css block only affect within current plate block(if inherit=true, subplate blocks are also affeted by current css block)
-2) embeded javascript(intergrated into angularjs)
-script block will be change to angularjs event, and parents of script block will be controller
+- Working In Progress
+1) embeded css<br>
+css block only affect within current plate block(if inherit=true, subplate blocks are also affeted by current css block)<br>
+<br>
+2) embeded javascript(intergrated into angularjs)<br>
+script block will be change to angularjs event, and parents of script block will be controller<br>
+attribute inject of script will inject module into current Controller<br>
+<br>
+3) each plate turn to html element<br>
+if you have plate has name subject, when you use subject element, it will be replaced with plate<br>
+all other inline html, script plate element have will override original plate<br>
 
 ## Before Compile
 ```html
@@ -14,7 +21,7 @@ script block will be change to angularjs event, and parents of script block will
 	}
 	</css>
 	<li class="ABC">
-		<span class="BCD" sid="{{subject.Sid}}">{{subject.Name}}<div EF="123">EF</div></span>
+		<span class="BCD" sid="{{subject.Sid}}">{{subject.Name}}<div EF="123">Subject Div Text</div></span>
 		<script event="click(subject)" inject="$http">
 		$scope.$emit('selectSubject', subject.Sid);
 		//alert(subject.Sid);
@@ -41,7 +48,7 @@ script block will be change to angularjs event, and parents of script block will
 	<ul>
 		<subject ng-repeat="subject in subjectList" ng-if="subjectList.length > 0">
 			<div>
-				<label>Test</label>
+				<label>Inline Label</label>
 				<script event="mouseover(subject)" inject="$http">
 				//alert(subject.Sid);
 				</script>
@@ -76,12 +83,12 @@ script block will be change to angularjs event, and parents of script block will
 				<span class="BCD  genclass_2_2" sid="{{subject.Sid}}">
 					{{subject.Name}}
 					<div ef="123">
-						EF
+						Subject Div Text
 					</div>
 				</span>
 				<div ng-controller="Ctrl_2" ng-mouseover="EventHandler_2_1(subject)">
 					<label>
-						Test
+						Inline Label
 					</label>
 				</div>
 			</li>
@@ -131,4 +138,6 @@ script block will be change to angularjs event, and parents of script block will
 ```
 
 # /revel : revel intergration
+- Working In Progress
 goplate.Render(controller, v ...interface{}) revel.Result
+
