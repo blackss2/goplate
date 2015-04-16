@@ -4,11 +4,14 @@
 1) embeded css<br>
 css block only affect within current plate block(if inherit=true, subplate blocks are also affeted by current css block)<br>
 <br>
-2) embeded javascript(intergrated into angularjs)<br>
+2) structured css<br>
+css block support structured css<br>
+<br>
+3) embeded javascript(intergrated into angularjs)<br>
 script block will be change to angularjs event, and parents of script block will be controller<br>
 attribute inject of script will inject module into current Controller<br>
 <br>
-3) each plate turn to html element<br>
+4) each plate turn to html element<br>
 if you have plate has name subject, when you use subject element, it will be replaced with plate<br>
 all other inline html, script plate element have will override original plate<br>
 
