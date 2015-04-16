@@ -1,6 +1,6 @@
 # goplate
 # / : template style Front-end preprocessor for angularjs
-- Working In Progress
+- Working In Progress<br>
 1) embeded css<br>
 css block only affect within current plate block(if inherit=true, subplate blocks are also affeted by current css block)<br>
 <br>
@@ -138,6 +138,6 @@ all other inline html, script plate element have will override original plate<br
 ```
 
 # /revel : revel intergration
-- Working In Progress
+- Working In Progress<br>
 goplate.Render(controller, v ...interface{}) revel.Result
 
