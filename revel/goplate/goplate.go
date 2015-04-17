@@ -22,7 +22,7 @@ func Render(c *revel.Controller, v ...interface{}) revel.Result {
 }
 
 func (this *Renderer) Refresh() {
-	this.loader = NewPlateLoader()
+	this.loader = goplate.NewPlateLoader()
 	path := revel.TemplatePaths[0] //TEMP
 	rootPath := fmt.Sprintf("%s/goplate", filepath.Dir(path))
 	filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
