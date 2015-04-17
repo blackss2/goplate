@@ -13,120 +13,106 @@ import (
 	"strings"
 )
 
-func ParseFile(filepath string) string {
+type PlateLoader struct {
+	plateHash map[string]*Plate
+	ctrlHash  map[string]*Controller
+}
+
+func NewPlateLoader() *PlateLoader {
+	return &PlateLoader{
+		plateHash: make(map[string]*Plate),
+		ctrlHash:  make(map[string]*Controller),
+	}
+}
+
+func (this *PlateLoader) LoadFile(filepath string) {
 	docFile, err := os.Open(filepath)
 	if err != nil {
 		panic(err)
 	}
-	return Parse(docFile)
+	this.Load(docFile)
 }
 
-func ParseString(src string) string {
+func (this *PlateLoader) LoadString(src string) {
 	var srcBuffer bytes.Buffer
 	srcBuffer.WriteString(src)
-	return Parse(&srcBuffer)
+	this.Load(&srcBuffer)
 }
 
-func Parse(src io.Reader) string {
+func (this *PlateLoader) Load(src io.Reader) {
 	doc, err := goquery.NewDocumentFromReader(src)
 	if err != nil {
 		panic(err)
 	}
 
-	plateHash := make(map[string]*Plate, 0)
-	cssList := make([]*Css, 0)
-	ctrlHash := make(map[string]*Controller)
-
-	var htmlBuffer bytes.Buffer
 	if doc.Find("plate > script").Length() > 0 {
 		panic("plate not allowed exist script tag in plate's body")
 	}
 	doc.Find("plate").Each(func(idx int, jPlate *goquery.Selection) {
-		p := NewPlate()
+		plate := NewPlate()
 		if name, has := jPlate.Attr("name"); !has {
 			panic("plate name missing")
 		} else {
-			p.Name = name
+			plate.Name = name
 		}
-		if _, has := plateHash[p.Name]; has {
+		if _, has := this.plateHash[plate.Name]; has {
 			panic("plate collision")
 		}
-		plateHash[p.Name] = p
+		this.plateHash[plate.Name] = plate
+		plate.jNode = jPlate
+		jPlate.Remove()
 
-		cssInheritList := make([]*Css, 0)
-		jPlate.Find("css").Each(func(idx int, jCss *goquery.Selection) {
-			css := NewCss(int64(len(cssList) + 1))
-			cssList = append(cssList, css)
+		plate.jNode.Find("css").Each(func(idx int, jCss *goquery.Selection) {
+			css := NewCss(int64(len(plate.cssList) + 1))
+			plate.cssList = append(plate.cssList, css)
+			css.Parse(jCss.Text())
+			jCss.Remove()
+
 			if inherit, has := jCss.Attr("inherit"); has && inherit == "true" {
 				css.inherit = true
 			}
-			css.Parse(jCss.Text())
-
+		})
+		for _, css := range plate.cssList {
 			if !css.inherit {
-				css.Apply(jPlate)
-			} else {
-				cssInheritList = append(cssInheritList, css)
+				css.Apply(plate.jNode)
 			}
-
-			jCss.Remove()
-		})
-		for name, p := range plateHash {
-			p.replacePlate(jPlate, name)
 		}
-		for _, css := range cssInheritList {
-			css.Apply(jPlate)
-		}
-		jPlate.Find("script").Each(func(idx int, jScript *goquery.Selection) {
-			parent := jScript.Parent()
-			var ctrl *Controller
-			if ctrlName, has := parent.Attr("ng-controller"); !has {
-				ctrl = NewController(int64(len(ctrlHash) + 1)) //TEMP
-				ctrlName = fmt.Sprintf("Ctrl_%d", ctrl.Id)
-				parent.SetAttr("ng-controller", ctrlName)
-				ctrlHash[ctrlName] = ctrl
-			} else {
-				ctrl = ctrlHash[ctrlName]
-			}
-			event := ctrl.NewEventHandler()
-			if eventStr, has := jScript.Attr("event"); has {
-				idx := strings.Index(eventStr, "(")
-				if idx >= 0 {
-					event.Type = eventStr[:idx]
-					event.Args = eventStr[idx:]
-					jScript.Parent().SetAttr("ng-"+event.Type, fmt.Sprintf("EventHandler_%d_%d%s", ctrl.Id, event.Id, event.Args))
-				} else {
-					event.Type = eventStr
-				}
-				if err != nil {
-					panic(err)
-				}
-			}
-			event.Body = jScript.Text()
-			if injectStr, has := jScript.Attr("inject"); has {
-				injectList := strings.Split(injectStr, ",")
-				for _, v := range injectList {
-					inject := strings.TrimSpace(v)
-					ctrl.InjectHash[inject] = true
-				}
-			}
-			jScript.Remove()
-		})
-		p.Node = jPlate
-		jPlate.Remove()
 	})
+}
 
-	for name, p := range plateHash {
-		p.replacePlate(doc.Find("body"), name)
+func (this *PlateLoader) ApplyFile(filepath string) string {
+	docFile, err := os.Open(filepath)
+	if err != nil {
+		panic(err)
+	}
+	return this.Apply(docFile)
+}
+
+func (this *PlateLoader) ApplyString(src string) string {
+	var srcBuffer bytes.Buffer
+	srcBuffer.WriteString(src)
+	return this.Apply(&srcBuffer)
+}
+
+func (this *PlateLoader) Apply(src io.Reader) string {
+	doc, err := goquery.NewDocumentFromReader(src)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, p := range this.plateHash {
+		this.replacePlate(p, doc.Find("body"))
 	}
 
 	htmlStr, err := doc.Html()
 	if err != nil {
 		panic(err)
 	}
+	var htmlBuffer bytes.Buffer
 	htmlBuffer.WriteString(htmlStr)
 	htmlBuffer.WriteString("<script>")
 	options := jsbeautifier.DefaultOptions()
-	for _, ctrl := range ctrlHash {
+	for _, ctrl := range this.ctrlHash {
 		jsStr := ctrl.String()
 		jsFormatted, err := jsbeautifier.Beautify(&jsStr, options)
 		if err != nil {
@@ -137,25 +123,30 @@ func Parse(src io.Reader) string {
 	}
 	htmlBuffer.WriteString("</script>")
 	htmlBuffer.WriteString("<style>")
-	for _, css := range cssList {
-		htmlBuffer.WriteString(css.String())
-		htmlBuffer.WriteString("\n")
+	for _, plate := range this.plateHash {
+		for _, css := range plate.cssList {
+			htmlBuffer.WriteString(css.String())
+			htmlBuffer.WriteString("\n")
+		}
 	}
 	htmlBuffer.WriteString("</style>")
 	return gohtml.Format(htmlBuffer.String())
 }
 
 type Plate struct {
-	Name string
-	Node *goquery.Selection
+	Name    string
+	jNode   *goquery.Selection
+	cssList []*Css
 }
 
 func NewPlate() *Plate {
-	return &Plate{}
+	return &Plate{
+		cssList: make([]*Css, 0),
+	}
 }
 
-func (this *Plate) replacePlate(doc *goquery.Selection, name string) {
-	doc.Find(name).Each(func(idx int, jPlate *goquery.Selection) {
+func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) {
+	jTarget.Find(plate.Name).Each(func(idx int, jPlate *goquery.Selection) {
 		/*
 			argList := make([]string, 0)
 			this.Find("arg").Each(func(idx int, arg *goquery.Selection) {
@@ -164,7 +155,12 @@ func (this *Plate) replacePlate(doc *goquery.Selection, name string) {
 			})
 		*/
 
-		jClone := this.Node.Clone()
+		jClone := plate.jNode.Clone()
+		for _, p := range this.plateHash {
+			if p.Name != plate.Name {
+				this.replacePlate(p, jClone)
+			}
+		}
 		/*
 			htmlStr, err := clone.Html()
 			if err != nil {
@@ -187,6 +183,53 @@ func (this *Plate) replacePlate(doc *goquery.Selection, name string) {
 		}
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jClone.Children().AppendSelection(jChild)
+		})
+
+		for _, css := range plate.cssList {
+			if css.inherit {
+				css.Apply(jClone)
+			}
+		}
+		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
+			jParent := jScript.Parent()
+			jScript.Remove()
+
+			var ctrl *Controller
+			if ctrlName, has := jParent.Attr("ng-controller"); !has {
+				ctrl = NewController(int64(len(this.ctrlHash) + 1)) //TEMP
+				ctrlName = fmt.Sprintf("Ctrl_%d", ctrl.Id)
+				jParent.SetAttr("ng-controller", ctrlName)
+				this.ctrlHash[ctrlName] = ctrl
+			} else {
+				ctrl = this.ctrlHash[ctrlName]
+			}
+
+			if injectStr, has := jScript.Attr("inject"); has {
+				injectList := strings.Split(injectStr, ",")
+				for _, v := range injectList {
+					inject := strings.TrimSpace(v)
+					ctrl.InjectHash[inject] = true
+				}
+			}
+
+			event := ctrl.NewEventHandler()
+			if eventStr, has := jScript.Attr("event"); has {
+				idx := strings.Index(eventStr, "(")
+				if idx >= 0 {
+					event.Type = eventStr[:idx]
+					event.Args = eventStr[idx:]
+					ngEventName := "ng-" + event.Type
+					eventHandlerStr := fmt.Sprintf("EventHandler_%d_%d%s", ctrl.Id, event.Id, event.Args)
+					if attrStr, has := jParent.Attr(ngEventName); has {
+						jParent.SetAttr(ngEventName, fmt.Sprintf("%s; %s", attrStr, eventHandlerStr))
+					} else {
+						jParent.SetAttr(ngEventName, eventHandlerStr)
+					}
+				} else {
+					event.Type = eventStr
+				}
+			}
+			event.Body = jScript.Text()
 		})
 
 		jPlate.ReplaceWithSelection(jClone.Children())
@@ -412,7 +455,11 @@ func (this *Css) Apply(jPlate *goquery.Selection) {
 			}
 		}()
 		class := fmt.Sprintf("genclass_%d_%d", this.Id, ctx.Id)
-		jPlate.Find(selector).AddClass(class)
-		ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
+		jPlate.Find(selector).Each(func(idx int, jObj *goquery.Selection) {
+			if !jObj.HasClass(class) {
+				jObj.AddClass(class)
+				ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
+			}
+		})
 	})
 }

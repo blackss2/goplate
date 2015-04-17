@@ -2,38 +2,38 @@ package goplate
 
 import (
 	"fmt"
-	"net/http"
-	"github.com/revel/revel"
 	"github.com/blackss2/goplate"
+	"github.com/revel/revel"
+	"net/http"
 	"path/filepath"
 )
-
-type Renderer struct {
-	controller *revel.Controller
-	v []interface{}
-}
 
 var (
 	MainRenderer *Renderer
 )
 
-func (r Renderer) Apply(req *revel.Request, resp *revel.Response) {
-	/*
-	//TODO
-	1. Load html from "www" folter
-	*/
-	//
-	resp.WriteHeader(http.StatusOK, "text/html")
-	resp.Out.Write([]byte(fmt.Sprintln(r.controller.Name + "/" + r.controller.MethodType.Name + "." + r.controller.Request.Format)))
+type Renderer struct {
+	loader *goplate.PlateLoader
 }
 
 func Render(c *revel.Controller, v ...interface{}) revel.Result {
-	r := new(Renderer)
-	r.controller = c
-	r.v = v
-	return r
+	filepath := c.Request.RequestURI
+	result := MainRenderer.loader.ApplyFile(filepath)
+	return c.RenderHtml(result)
+}
+
+func (this *Renderer) Refresh() {
+	this.loader = NewPlateLoader()
+	path := revel.TemplatePaths[0] //TEMP
+	rootPath := fmt.Sprintf("%s/goplate", filepath.Dir(path))
+	filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ".htm" || filepath.Ext(path) == ".html" {
+			this.loader.LoadFile(path)
+		}
+	})
 }
 
 func init() {
-	
+	MainRenderer := &Renderer{}
+	MainRenderer.Refresh()
 }
