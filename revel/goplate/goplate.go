@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/blackss2/goplate"
 	"github.com/revel/revel"
-	"net/http"
 	"path/filepath"
 )
 
