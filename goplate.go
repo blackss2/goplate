@@ -72,12 +72,18 @@ func (this *PlateLoader) Load(src io.Reader) {
 				css.inherit = true
 			}
 		})
-		for _, css := range plate.cssList {
-			if !css.inherit {
-				css.Apply(plate.jNode)
+	})
+	//TODO : replace from plate to html attend to dependency
+	//TODO : create css order attend to dependency
+	/*
+		for _, p := range this.plateHash {
+			for _, plate := range this.plateHash {
+				if p != plate {
+					this.replacePlate(p, plate.jNode)
+				}
 			}
 		}
-	})
+	*/
 }
 
 func (this *PlateLoader) ApplyFile(filepath string) string {
@@ -100,17 +106,15 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 		panic(err)
 	}
 
+	doc.Find("body").SetAttr("ng-app", "myApp")
+
 	for _, p := range this.plateHash {
 		this.replacePlate(p, doc.Find("body"))
 	}
 
-	htmlStr, err := doc.Html()
-	if err != nil {
-		panic(err)
-	}
-	var htmlBuffer bytes.Buffer
-	htmlBuffer.WriteString(htmlStr)
-	htmlBuffer.WriteString("<script>")
+	var scriptBuffer bytes.Buffer
+	scriptBuffer.WriteString("<script>")
+	scriptBuffer.WriteString("var myApp = angular.module('myApp',[]);");
 	options := jsbeautifier.DefaultOptions()
 	for _, ctrl := range this.ctrlHash {
 		jsStr := ctrl.String()
@@ -118,19 +122,28 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 		if err != nil {
 			panic(err)
 		}
-		htmlBuffer.WriteString(jsFormatted)
-		htmlBuffer.WriteString("\n")
+		scriptBuffer.WriteString(jsFormatted)
+		scriptBuffer.WriteString("\n")
 	}
-	htmlBuffer.WriteString("</script>")
-	htmlBuffer.WriteString("<style>")
+	scriptBuffer.WriteString("</script>")
+	doc.Find("body").AppendHtml(scriptBuffer.String())
+	
+	var cssBuffer bytes.Buffer
+	cssBuffer.WriteString("<style>")
 	for _, plate := range this.plateHash {
 		for _, css := range plate.cssList {
-			htmlBuffer.WriteString(css.String())
-			htmlBuffer.WriteString("\n")
+			cssBuffer.WriteString(css.String())
+			cssBuffer.WriteString("\n")
 		}
 	}
-	htmlBuffer.WriteString("</style>")
-	return gohtml.Format(htmlBuffer.String())
+	cssBuffer.WriteString("</style>")
+	doc.Find("head").AppendHtml(cssBuffer.String())
+	
+	htmlStr, err := doc.Html()
+	if err != nil {
+		panic(err)
+	}
+	return gohtml.Format(htmlStr)
 }
 
 type Plate struct {
@@ -156,9 +169,19 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 
 		jClone := plate.jNode.Clone()
+		for _, css := range plate.cssList {
+			if !css.inherit {
+				css.Apply(jClone)
+			}
+		}
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
 				this.replacePlate(p, jClone)
+			}
+		}
+		for _, css := range plate.cssList {
+			if css.inherit {
+				css.Apply(jClone)
 			}
 		}
 		/*
@@ -184,12 +207,6 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jClone.Children().AppendSelection(jChild)
 		})
-
-		for _, css := range plate.cssList {
-			if css.inherit {
-				css.Apply(jClone)
-			}
-		}
 		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
 			jParent := jScript.Parent()
 			jScript.Remove()
@@ -273,7 +290,13 @@ func (this *Controller) String() string {
 		injectBuffer.WriteString(k)
 	}
 	injectStr := injectBuffer.String()
-	buffer.WriteString(fmt.Sprintf(`function Ctrl_%d($scope, $element%s) {`, this.Id, injectStr))
+	var injectQuoteBuffer bytes.Buffer
+	for k, _ := range this.InjectHash {
+		injectQuoteBuffer.WriteString("', '")
+		injectQuoteBuffer.WriteString(k)
+	}
+	injectQuoteStr := injectQuoteBuffer.String()
+	buffer.WriteString(fmt.Sprintf(`myApp.controller('Ctrl_%d', ['$scope', '$element%s', function($scope, $element%s) {`, this.Id, injectQuoteStr, injectStr))
 	for _, event := range this.EventHandlers {
 		if len(event.Type) > 0 {
 			buffer.WriteString("\n")
@@ -285,7 +308,7 @@ func (this *Controller) String() string {
 			buffer.WriteString("\n")
 		}
 	}
-	buffer.WriteString(`}`)
+	buffer.WriteString(`}]);`)
 	return buffer.String()
 }
 

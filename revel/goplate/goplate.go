@@ -5,6 +5,7 @@ import (
 	"github.com/blackss2/goplate"
 	"github.com/revel/revel"
 	"path/filepath"
+	"os"
 )
 
 var (
@@ -16,6 +17,7 @@ type Renderer struct {
 }
 
 func Render(c *revel.Controller, v ...interface{}) revel.Result {
+	MainRenderer.Refresh()
 	filepath := c.Request.RequestURI
 	result := MainRenderer.loader.ApplyFile(filepath)
 	return c.RenderHtml(result)
@@ -24,15 +26,15 @@ func Render(c *revel.Controller, v ...interface{}) revel.Result {
 func (this *Renderer) Refresh() {
 	this.loader = goplate.NewPlateLoader()
 	path := revel.TemplatePaths[0] //TEMP
-	rootPath := fmt.Sprintf("%s/goplate", filepath.Dir(path))
+	rootPath := fmt.Sprintf("%s/goplates", filepath.Dir(path))
 	filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".htm" || filepath.Ext(path) == ".html" {
 			this.loader.LoadFile(path)
 		}
+		return nil
 	})
 }
 
 func init() {
-	MainRenderer := &Renderer{}
-	MainRenderer.Refresh()
+	MainRenderer = &Renderer{}
 }
