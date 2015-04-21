@@ -114,7 +114,7 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 
 	var scriptBuffer bytes.Buffer
 	scriptBuffer.WriteString("<script>")
-	scriptBuffer.WriteString("var myApp = angular.module('myApp',[]);");
+	scriptBuffer.WriteString("var myApp = angular.module('myApp',[]);")
 	options := jsbeautifier.DefaultOptions()
 	for _, ctrl := range this.ctrlHash {
 		jsStr := ctrl.String()
@@ -127,18 +127,20 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 	}
 	scriptBuffer.WriteString("</script>")
 	doc.Find("body").AppendHtml(scriptBuffer.String())
-	
+
 	var cssBuffer bytes.Buffer
 	cssBuffer.WriteString("<style>")
 	for _, plate := range this.plateHash {
 		for _, css := range plate.cssList {
-			cssBuffer.WriteString(css.String())
-			cssBuffer.WriteString("\n")
+			if css.isUsed {
+				cssBuffer.WriteString(css.String())
+				cssBuffer.WriteString("\n")
+			}
 		}
 	}
 	cssBuffer.WriteString("</style>")
 	doc.Find("head").AppendHtml(cssBuffer.String())
-	
+
 	htmlStr, err := doc.Html()
 	if err != nil {
 		panic(err)
@@ -296,7 +298,7 @@ func (this *Controller) String() string {
 		injectQuoteBuffer.WriteString(k)
 	}
 	injectQuoteStr := injectQuoteBuffer.String()
-	buffer.WriteString(fmt.Sprintf(`myApp.controller('Ctrl_%d', ['$scope', '$element%s', function($scope, $element%s) {`, this.Id, injectQuoteStr, injectStr))
+	buffer.WriteString(fmt.Sprintf(`myApp.controller('Ctrl_%d', ['$scope', '$rootScope%s', function($scope, $rootScope%s) {`, this.Id, injectQuoteStr, injectStr))
 	for _, event := range this.EventHandlers {
 		if len(event.Type) > 0 {
 			buffer.WriteString("\n")
@@ -385,6 +387,7 @@ func NewCssContext(Id int64) *CssContext {
 type Css struct {
 	Id        int64
 	root      *CssContext
+	isUsed    bool
 	inherit   bool
 	contextId int64
 }
@@ -481,6 +484,7 @@ func (this *Css) Apply(jPlate *goquery.Selection) {
 		jPlate.Find(selector).Each(func(idx int, jObj *goquery.Selection) {
 			if !jObj.HasClass(class) {
 				jObj.AddClass(class)
+				this.isUsed = true
 				ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
 			}
 		})

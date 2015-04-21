@@ -25,6 +25,14 @@ func NewGoplateLoader() *GoplateLoader {
 	}
 }
 
+func mkDirIfNotExist(path string) {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			os.Mkdir(path, 0777)
+		}
+	}
+}
+
 func (this *GoplateLoader) Refresh() *revel.Error {
 	this.PlateLoader = goplate.NewPlateLoader()
 	viewsPath := revel.TemplatePaths[0]
@@ -39,14 +47,15 @@ func (this *GoplateLoader) Refresh() *revel.Error {
 				}
 				if strings.HasPrefix(relPath, "views\\") || strings.HasPrefix(relPath, "views/") {
 					outputPath := fmt.Sprintf("%s/%s", viewsPath, relPath[5:])
+					mkDirIfNotExist(filepath.Dir(outputPath))
 					file, err := os.Create(outputPath)
-					fmt.Println(outputPath)
 					if err != nil {
 						panic(err)
 					}
 					if file != nil {
 						result := this.ApplyFile(path)
 						file.WriteString(result)
+						file.Close()
 					}
 				}
 			}
@@ -64,6 +73,7 @@ func (this *GoplateLoader) WatchFile(basename string) bool {
 	return !strings.HasPrefix(basename, ".")
 }
 
+var revelWatchFilter func(c *revel.Controller, fc []revel.Filter)
 var WatchFilter = func(c *revel.Controller, fc []revel.Filter) {
 	if MainWatcher != nil {
 		err := MainWatcher.Notify()
@@ -72,7 +82,7 @@ var WatchFilter = func(c *revel.Controller, fc []revel.Filter) {
 			return
 		}
 	}
-	fc[0](c, fc[1:])
+	revelWatchFilter(c, fc)
 }
 
 func init() {
@@ -85,6 +95,8 @@ func init() {
 
 		if revel.Config.BoolDefault("watch", true) {
 			MainWatcher = revel.NewWatcher()
+			revelWatchFilter = revel.WatchFilter
+			revel.WatchFilter = WatchFilter
 			revel.Filters = append([]revel.Filter{WatchFilter}, revel.Filters...)
 		}
 		if MainWatcher != nil && revel.Config.BoolDefault("watch.templates", true) {
