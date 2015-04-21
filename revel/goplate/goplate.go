@@ -4,73 +4,91 @@ import (
 	"fmt"
 	"github.com/blackss2/goplate"
 	"github.com/revel/revel"
-	"net/http"
-	"html/template"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 )
 
 var (
-	MainRenderer *Renderer
+	MainGoplateLoader *GoplateLoader
+	MainWatcher       *revel.Watcher
 )
 
-type Renderer struct {
-	loader *goplate.PlateLoader
-	templateSet *template.Template
-	isInit bool
+type GoplateLoader struct {
+	*goplate.PlateLoader
+	paths []string
 }
 
-func Render(c *revel.Controller, v ...interface{}) revel.Result {
-	MainRenderer.Refresh()
-	/*
-	filepath := revel.TemplatePaths[0] + "/" + c.Name + "/" + c.MethodName + c.Request.Format
-	result := MainRenderer.loader.ApplyFile(filepath)
-	return c.RenderHtml(result)
-	*/
-	c.Response.Status = http.StatusOK
-
-	template, err := MainRenderer.templateSet.Template(templatePath)
-	if err != nil {
-		return c.RenderError(err)
-	}
-
-	return &RenderTemplateResult{
-		Template:   template,
-		RenderArgs: c.RenderArgs,
+func NewGoplateLoader() *GoplateLoader {
+	return &GoplateLoader{
+		paths: make([]string, 0, 1),
 	}
 }
 
-func (this *Renderer) Refresh() {
-	//TODO : mutex lock MainRenderer
-	if !MainRenderer.isInit {
-		this.loader = goplate.NewPlateLoader()
-		if len(revel.TemplatePaths) > 0 {
-			path := revel.TemplatePaths[0] //TEMP
-			rootPath := fmt.Sprintf("%s/goplates", filepath.Dir(path))
-			filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
-				if filepath.Ext(path) == ".htm" || filepath.Ext(path) == ".html" {
-					this.loader.LoadFile(path)
-					result := MainRenderer.loader.ApplyFile(path)
-					MainRenderer.templateSet.Parse(result)
+func (this *GoplateLoader) Refresh() *revel.Error {
+	this.PlateLoader = goplate.NewPlateLoader()
+	viewsPath := revel.TemplatePaths[0]
+
+	for _, rootPath := range MainGoplateLoader.paths {
+		filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
+			if filepath.Ext(path) == ".htm" || filepath.Ext(path) == ".html" {
+				this.LoadFile(path)
+				relPath, err := filepath.Rel(rootPath, path)
+				if err != nil {
+					panic(err)
 				}
-				return nil
-			})
-			MainRenderer.isInit = true
+				if strings.HasPrefix(relPath, "views\\") || strings.HasPrefix(relPath, "views/") {
+					outputPath := fmt.Sprintf("%s/%s", viewsPath, relPath[5:])
+					file, err := os.Create(outputPath)
+					fmt.Println(outputPath)
+					if err != nil {
+						panic(err)
+					}
+					if file != nil {
+						result := this.ApplyFile(path)
+						file.WriteString(result)
+					}
+				}
+			}
+			return nil
+		})
+	}
+	return nil
+}
+
+func (this *GoplateLoader) WatchDir(info os.FileInfo) bool {
+	return !strings.HasPrefix(info.Name(), ".")
+}
+
+func (this *GoplateLoader) WatchFile(basename string) bool {
+	return !strings.HasPrefix(basename, ".")
+}
+
+var WatchFilter = func(c *revel.Controller, fc []revel.Filter) {
+	if MainWatcher != nil {
+		err := MainWatcher.Notify()
+		if err != nil {
+			c.Result = c.RenderError(err)
+			return
 		}
 	}
+	fc[0](c, fc[1:])
 }
 
 func init() {
-	MainRenderer = &Renderer{
-		templateSet: template.New(templateName).Funcs(TemplateFuncs),
-	}
-	go func() {
-		tick := time.Tick(5 * time.Second)
-		select {
-		case <-tick:
-			MainRenderer.isInit = false
-			MainRenderer.Refresh() //TEMP
+	revel.OnAppStart(func() {
+		MainGoplateLoader = NewGoplateLoader()
+		viewsPath := revel.TemplatePaths[0]
+		appPath := fmt.Sprintf("%s/goplates", filepath.Dir(viewsPath))
+		MainGoplateLoader.paths = append(MainGoplateLoader.paths, appPath)
+		revel.TemplateDelims = "[[ ]]"
+
+		if revel.Config.BoolDefault("watch", true) {
+			MainWatcher = revel.NewWatcher()
+			revel.Filters = append([]revel.Filter{WatchFilter}, revel.Filters...)
 		}
-	}()
+		if MainWatcher != nil && revel.Config.BoolDefault("watch.templates", true) {
+			MainWatcher.Listen(MainGoplateLoader, MainGoplateLoader.paths...)
+		}
+	})
 }
