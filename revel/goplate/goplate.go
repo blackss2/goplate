@@ -46,7 +46,7 @@ func (this *GoplateLoader) Refresh() *revel.Error {
 					panic(err)
 				}
 				if strings.HasPrefix(relPath, "views\\") || strings.HasPrefix(relPath, "views/") {
-					viewFileList = append(viewFileList, relPath)
+					viewFileList = append(viewFileList, path)
 				} else {
 					this.LoadFile(path)
 				}
@@ -54,7 +54,11 @@ func (this *GoplateLoader) Refresh() *revel.Error {
 			return nil
 		})
 	}
-	for _, relPath := range viewFileList {
+	for _, path := range viewFileList {
+		relPath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			panic(err)
+		}
 		outputPath := fmt.Sprintf("%s/%s", viewsPath, relPath[5:])
 		mkDirIfNotExist(filepath.Dir(outputPath))
 		file, err := os.Create(outputPath)
