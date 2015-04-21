@@ -36,31 +36,36 @@ func mkDirIfNotExist(path string) {
 func (this *GoplateLoader) Refresh() *revel.Error {
 	this.PlateLoader = goplate.NewPlateLoader()
 	viewsPath := revel.TemplatePaths[0]
+	viewFileList := make([]string, 0)
 
 	for _, rootPath := range MainGoplateLoader.paths {
 		filepath.Walk(rootPath, func(path string, f os.FileInfo, err error) error {
 			if filepath.Ext(path) == ".htm" || filepath.Ext(path) == ".html" {
-				this.LoadFile(path)
 				relPath, err := filepath.Rel(rootPath, path)
 				if err != nil {
 					panic(err)
 				}
 				if strings.HasPrefix(relPath, "views\\") || strings.HasPrefix(relPath, "views/") {
-					outputPath := fmt.Sprintf("%s/%s", viewsPath, relPath[5:])
-					mkDirIfNotExist(filepath.Dir(outputPath))
-					file, err := os.Create(outputPath)
-					if err != nil {
-						panic(err)
-					}
-					if file != nil {
-						result := this.ApplyFile(path)
-						file.WriteString(result)
-						file.Close()
-					}
+					viewFileList = append(viewFileList, relPath)
+				} else {
+					this.LoadFile(path)
 				}
 			}
 			return nil
 		})
+	}
+	for _, relPath := range viewFileList {
+		outputPath := fmt.Sprintf("%s/%s", viewsPath, relPath[5:])
+		mkDirIfNotExist(filepath.Dir(outputPath))
+		file, err := os.Create(outputPath)
+		if err != nil {
+			panic(err)
+		}
+		if file != nil {
+			result := this.ApplyFile(path)
+			file.WriteString(result)
+			file.Close()
+		}
 	}
 	return nil
 }
