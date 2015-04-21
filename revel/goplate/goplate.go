@@ -38,7 +38,7 @@ type viewsInfo struct {
 	path    string
 }
 
-func newViewsInfo(relPath string, path string) {
+func newViewsInfo(relPath string, path string) *viewsInfo {
 	return &viewsInfo{
 		relPath: relPath,
 		path:    path,
