@@ -149,18 +149,18 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 }
 
 type Plate struct {
-	Id             int64
-	Name           string
-	jNode          *goquery.Selection
-	cssList        []*Css
-	ctrlList       []*Controller
+	Id       int64
+	Name     string
+	jNode    *goquery.Selection
+	cssList  []*Css
+	ctrlList []*Controller
 }
 
 func NewPlate(Id int64) *Plate {
 	return &Plate{
-		Id:             Id,
-		cssList:        make([]*Css, 0),
-		ctrlList:       make([]*Controller, 0),
+		Id:       Id,
+		cssList:  make([]*Css, 0),
+		ctrlList: make([]*Controller, 0),
 	}
 }
 
@@ -180,10 +180,6 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jCloneParent := jClone.Find("._sys_clone_parent_")
 		jCloneParent.Remove()
 		jCloneParent.AppendSelection(jClone)
-
-		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
-			jClone.Children().AppendSelection(jChild.Remove())
-		})
 
 		plate.ApplyCss(jCloneParent, false)
 		for _, p := range this.plateHash {
@@ -215,6 +211,13 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		for _, attr := range jPlate.Nodes[0].Attr {
 			jClone.Children().SetAttr(attr.Key, attr.Val)
 		}
+		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
+			jChild.Remove()
+			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
+				jCloneChild.AppendSelection(jChild.Clone())
+			})
+		})
+
 		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
 			jParent := jScript.Parent()
 			jScript.Remove()
