@@ -72,10 +72,6 @@ func (this *PlateLoader) Load(src io.Reader) {
 				css.inherit = true
 			}
 		})
-		for _, p := range this.plateHash {
-			this.replacePlate(plate, p.jNode)
-			this.replacePlate(p, plate.jNode)
-		}
 	})
 }
 
@@ -182,6 +178,12 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jCloneParent.AppendSelection(jClone)
 
 		plate.ApplyCss(jCloneParent, false)
+		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
+			jChild.Remove()
+			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
+				jCloneChild.AppendSelection(jChild.Clone())
+			})
+		})
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
 				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
@@ -209,14 +211,10 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 			clone.ReplaceWithHtml(executedHtml)
 		*/
 		for _, attr := range jPlate.Nodes[0].Attr {
-			jClone.Children().SetAttr(attr.Key, attr.Val)
-		}
-		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
-			jChild.Remove()
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
-				jCloneChild.AppendSelection(jChild.Clone())
+				jCloneChild.SetAttr(attr.Key, attr.Val)
 			})
-		})
+		}
 
 		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
 			jParent := jScript.Parent()
