@@ -260,9 +260,6 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 				}
 			}
 			event.Body = jScript.Text()
-
-			fmt.Println("------------------")
-			fmt.Println(jScript.Text())
 		})
 
 		jPlate.ReplaceWithSelection(jClone.Children())
