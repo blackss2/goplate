@@ -106,6 +106,7 @@ func init() {
 	revel.OnAppStart(func() {
 		MainGoplateLoader = NewGoplateLoader()
 		viewsPath := revel.TemplatePaths[0]
+		mkDirIfNotExist(viewsPath)
 		appPath := fmt.Sprintf("%s/goplates", filepath.Dir(viewsPath))
 		MainGoplateLoader.paths = append(MainGoplateLoader.paths, appPath)
 		revel.TemplateDelims = "[[ ]]"

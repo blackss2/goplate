@@ -265,7 +265,7 @@ func (this *Plate) ApplyCss(jPlate *goquery.Selection, inherit bool) {
 						css.isUsed = true
 						ctx.isUsed = true
 						if !strings.HasSuffix(ctx.selector, class) {
-							ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)							
+							ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
 						}
 					}
 				})
