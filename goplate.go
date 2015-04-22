@@ -72,6 +72,10 @@ func (this *PlateLoader) Load(src io.Reader) {
 				css.inherit = true
 			}
 		})
+		for _, p := range this.plateHash {
+			this.replacePlate(plate, p.jNode)
+			this.replacePlate(p, plate.jNode)
+		}
 	})
 }
 
@@ -145,18 +149,20 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 }
 
 type Plate struct {
-	Id       int64
-	Name     string
-	jNode    *goquery.Selection
-	cssList  []*Css
-	ctrlList []*Controller
+	Id             int64
+	Name           string
+	jNode          *goquery.Selection
+	cssList        []*Css
+	ctrlList       []*Controller
+	builtPlateHash map[*Plate]bool
 }
 
 func NewPlate(Id int64) *Plate {
 	return &Plate{
-		Id:       Id,
-		cssList:  make([]*Css, 0),
-		ctrlList: make([]*Controller, 0),
+		Id:             Id,
+		cssList:        make([]*Css, 0),
+		ctrlList:       make([]*Controller, 0),
+		builtPlateHash: make(map[*Plate]bool),
 	}
 }
 
@@ -179,14 +185,17 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 
 		plate.ApplyCss(jCloneParent, false)
 		for _, p := range this.plateHash {
-			if p.Name != plate.Name {
-				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
+			if _, has := plate.builtPlateHash[p]; !has {
+				if p.Name != plate.Name {
+					usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
+					plate.builtPlateHash[p] = true
+				}
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
 		plate.ApplyCss(jCloneParent, true)
 		jClone.Remove()
-		
+
 		/*
 			htmlStr, err := clone.Html()
 			if err != nil {
@@ -251,8 +260,11 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 				}
 			}
 			event.Body = jScript.Text()
+
+			fmt.Println("------------------")
+			fmt.Println(jScript.Text())
 		})
-		
+
 		jPlate.ReplaceWithSelection(jClone.Children())
 	})
 	return
