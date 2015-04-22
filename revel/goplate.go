@@ -1,4 +1,4 @@
-package goplate
+package gopleta_revel
 
 import (
 	"fmt"
