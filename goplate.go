@@ -172,14 +172,19 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 
 		jClone := plate.jNode.Clone()
-		plate.ApplyCss(jClone, false)
+		jCloneParent := plate.jNode.AppendHtml("<div></div>")
+		jCloneParent.Remove()
+		jCloneParent.AppendSelection(jClone)
+		
+		plate.ApplyCss(jCloneParent, false)
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
 				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
-		plate.ApplyCss(jClone, true)
+		plate.ApplyCss(jCloneParent, true)
+		
 		/*
 			htmlStr, err := clone.Html()
 			if err != nil {
@@ -245,7 +250,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 			}
 			event.Body = jScript.Text()
 		})
-
+		
 		jPlate.ReplaceWithSelection(jClone.Children())
 	})
 	return
