@@ -67,7 +67,7 @@ func (this *GoplateLoader) Refresh() *revel.Error {
 		})
 	}
 	for _, info := range viewFileList {
-		outputPath := fmt.Sprintf("%s/%s", viewsPath, info.relPath[5:])
+		outputPath := fmt.Sprintf("%s/%s", viewsPath, info.relPath[6:])
 		mkDirIfNotExist(filepath.Dir(outputPath))
 		file, err := os.Create(outputPath)
 		if err != nil {
@@ -119,6 +119,6 @@ func init() {
 		if MainWatcher != nil && revel.Config.BoolDefault("watch.templates", true) {
 			MainWatcher.Listen(MainGoplateLoader, MainGoplateLoader.paths...)
 		}
-		revel.INFO.Println("Goplate loaded") 
+		revel.INFO.Println("Goplate loaded")
 	})
 }
