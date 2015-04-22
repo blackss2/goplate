@@ -28,7 +28,7 @@ func NewGoplateLoader() *GoplateLoader {
 func mkDirIfNotExist(path string) {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			os.Mkdir(path, 0777)
+			os.MkdirAll(path, 0777)
 		}
 	}
 }
