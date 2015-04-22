@@ -14,17 +14,18 @@ attribute inject of script will inject module into current Controller<br>
 4) each plate turn to html element<br>
 if you have plate has name subject, when you use subject element, it will be replaced with plate<br>
 all other inline html, script plate element have will override original plate<br>
-
-- Current
-embeded css
-structured css
-embeded javascript(intergrated into angularjs)
-plate trun to html element
-
-- Future
-less or scss support(or both with type attribute)
-dependency management
-
+<br>
+- Current<br>
+embeded css<br>
+structured css<br>
+embeded javascript(intergrated into angularjs)<br>
+plate trun to html element<br>
+<br>
+- Future<br>
+less or scss support(or both with type attribute)<br>
+dependency management<br>
+holder & place in plate<br>
+<br>
 ## Before Compile
 ```html
 

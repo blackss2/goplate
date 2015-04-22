@@ -49,7 +49,7 @@ func (this *PlateLoader) Load(src io.Reader) {
 		panic("plate not allowed exist script tag in plate's body")
 	}
 	doc.Find("plate").Each(func(idx int, jPlate *goquery.Selection) {
-		plate := NewPlate()
+		plate := NewPlate(int64(len(this.plateHash) + 1)) //TEMP
 		if name, has := jPlate.Attr("name"); !has {
 			panic("plate name missing")
 		} else {
@@ -149,13 +149,15 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 }
 
 type Plate struct {
+	Id      int64
 	Name    string
 	jNode   *goquery.Selection
 	cssList []*Css
 }
 
-func NewPlate() *Plate {
+func NewPlate(Id int64) *Plate {
 	return &Plate{
+		Id:      Id,
 		cssList: make([]*Css, 0),
 	}
 }
@@ -171,21 +173,13 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 
 		jClone := plate.jNode.Clone()
-		for _, css := range plate.cssList {
-			if !css.inherit {
-				css.Apply(jClone)
-			}
-		}
+		plate.ApplyCss(jClone, false)
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
 				this.replacePlate(p, jClone)
 			}
 		}
-		for _, css := range plate.cssList {
-			if css.inherit {
-				css.Apply(jClone)
-			}
-		}
+		plate.ApplyCss(jClone, true)
 		/*
 			htmlStr, err := clone.Html()
 			if err != nil {
@@ -255,6 +249,31 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 	})
 }
 
+func (this *Plate) ApplyCss(jPlate *goquery.Selection, inherit bool) {
+	for _, css := range this.cssList {
+		if css.inherit == inherit {
+			css.Visit(func(selector string, ctx *CssContext) {
+				defer func() {
+					if err := recover(); err != nil {
+						//fmt.Println(err)
+					}
+				}()
+				class := fmt.Sprintf("genclass_%d_%d_%d", this.Id, css.Id, ctx.Id)
+				jPlate.Find(selector).Each(func(idx int, jObj *goquery.Selection) {
+					if !jObj.HasClass(class) {
+						jObj.AddClass(class)
+						css.isUsed = true
+						ctx.isUsed = true
+						if !strings.HasSuffix(ctx.selector, class) {
+							ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)							
+						}
+					}
+				})
+			})
+		}
+	}
+}
+
 type Controller struct {
 	Id            int64
 	EventHandlers []*EventHandler
@@ -320,6 +339,7 @@ type CssContext struct {
 	bodyList []string
 	child    []*CssContext
 	parent   *CssContext
+	isUsed   bool
 }
 
 func (this *CssContext) Selector() string {
@@ -336,21 +356,23 @@ func (this *CssContext) Selector() string {
 
 func (this *CssContext) String() string {
 	var buffer bytes.Buffer
-	selectorList := make([]string, 0)
-	selectorList = append(selectorList, this.Selector())
-	current := this.parent
-	for current != nil {
-		selectorList = append(selectorList, current.Selector())
-		current = current.parent
+	if this.isUsed {
+		selectorList := make([]string, 0)
+		selectorList = append(selectorList, this.Selector())
+		current := this.parent
+		for current != nil {
+			selectorList = append(selectorList, current.Selector())
+			current = current.parent
+		}
+		for i := len(selectorList) - 1; i >= 0; i-- {
+			buffer.WriteString(selectorList[i])
+		}
+		buffer.WriteString(" {\n")
+		buffer.WriteString(strings.Join(this.bodyList, "\n"))
+		buffer.WriteString("\n}\n")
 	}
-	for i := len(selectorList) - 1; i >= 0; i-- {
-		buffer.WriteString(selectorList[i])
-	}
-	buffer.WriteString(" {\n")
-	buffer.WriteString(strings.Join(this.bodyList, "\n"))
-	buffer.WriteString("\n}\n")
-	for _, c := range this.child {
-		buffer.WriteString(c.String())
+	for _, ctx := range this.child {
+		buffer.WriteString(ctx.String())
 	}
 	return buffer.String()
 }
@@ -461,32 +483,14 @@ func (this *Css) Parse(src string) {
 
 func (this *Css) String() string {
 	var buffer bytes.Buffer
-	for _, c := range this.root.child {
-		buffer.WriteString(c.String())
+	for _, ctx := range this.root.child {
+		buffer.WriteString(ctx.String())
 	}
 	return buffer.String()
 }
 
 func (this *Css) Visit(visitor func(string, *CssContext)) {
-	for _, c := range this.root.child {
-		c.visit(visitor)
+	for _, ctx := range this.root.child {
+		ctx.visit(visitor)
 	}
-}
-
-func (this *Css) Apply(jPlate *goquery.Selection) {
-	this.Visit(func(selector string, ctx *CssContext) {
-		defer func() {
-			if err := recover(); err != nil {
-				//fmt.Println(err)
-			}
-		}()
-		class := fmt.Sprintf("genclass_%d_%d", this.Id, ctx.Id)
-		jPlate.Find(selector).Each(func(idx int, jObj *goquery.Selection) {
-			if !jObj.HasClass(class) {
-				jObj.AddClass(class)
-				this.isUsed = true
-				ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
-			}
-		})
-	})
 }
