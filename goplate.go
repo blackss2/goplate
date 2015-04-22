@@ -154,7 +154,6 @@ type Plate struct {
 	jNode          *goquery.Selection
 	cssList        []*Css
 	ctrlList       []*Controller
-	builtPlateHash map[*Plate]bool
 }
 
 func NewPlate(Id int64) *Plate {
@@ -162,7 +161,6 @@ func NewPlate(Id int64) *Plate {
 		Id:             Id,
 		cssList:        make([]*Css, 0),
 		ctrlList:       make([]*Controller, 0),
-		builtPlateHash: make(map[*Plate]bool),
 	}
 }
 
@@ -183,13 +181,14 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jCloneParent.Remove()
 		jCloneParent.AppendSelection(jClone)
 
+		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
+			jClone.Children().AppendSelection(jChild.Remove())
+		})
+
 		plate.ApplyCss(jCloneParent, false)
 		for _, p := range this.plateHash {
-			if _, has := plate.builtPlateHash[p]; !has {
-				if p.Name != plate.Name {
-					usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
-					plate.builtPlateHash[p] = true
-				}
+			if p.Name != plate.Name {
+				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
@@ -216,13 +215,10 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		for _, attr := range jPlate.Nodes[0].Attr {
 			jClone.Children().SetAttr(attr.Key, attr.Val)
 		}
-		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
-			jClone.Children().AppendSelection(jChild)
-		})
 		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
 			jParent := jScript.Parent()
 			jScript.Remove()
-			
+
 			var ctrl *Controller
 			if ctrlName, has := jParent.Attr("ng-controller"); !has {
 				ctrl = NewController(int64(len(this.ctrlHash) + 1)) //TEMP
