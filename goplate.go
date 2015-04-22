@@ -222,7 +222,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jClone.Find("script").Each(func(idx int, jScript *goquery.Selection) {
 			jParent := jScript.Parent()
 			jScript.Remove()
-
+			
 			var ctrl *Controller
 			if ctrlName, has := jParent.Attr("ng-controller"); !has {
 				ctrl = NewController(int64(len(this.ctrlHash) + 1)) //TEMP
