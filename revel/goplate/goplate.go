@@ -119,5 +119,6 @@ func init() {
 		if MainWatcher != nil && revel.Config.BoolDefault("watch.templates", true) {
 			MainWatcher.Listen(MainGoplateLoader, MainGoplateLoader.paths...)
 		}
+		revel.INFO.Println("Goplate loaded") 
 	})
 }
