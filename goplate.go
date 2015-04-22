@@ -73,17 +73,6 @@ func (this *PlateLoader) Load(src io.Reader) {
 			}
 		})
 	})
-	//TODO : replace from plate to html attend to dependency
-	//TODO : create css order attend to dependency
-	/*
-		for _, p := range this.plateHash {
-			for _, plate := range this.plateHash {
-				if p != plate {
-					this.replacePlate(p, plate.jNode)
-				}
-			}
-		}
-	*/
 }
 
 func (this *PlateLoader) ApplyFile(filepath string) string {
@@ -108,36 +97,43 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 
 	doc.Find("body").SetAttr("ng-app", "myApp")
 
+	usedPlateList := make([]*Plate, 0)
 	for _, p := range this.plateHash {
-		this.replacePlate(p, doc.Find("body"))
+		usedPlateList = append(usedPlateList, this.replacePlate(p, doc.Find("body"))...)
 	}
 
 	var scriptBuffer bytes.Buffer
 	scriptBuffer.WriteString("<script>")
 	scriptBuffer.WriteString("var myApp = angular.module('myApp',[]);")
 	options := jsbeautifier.DefaultOptions()
-	for _, ctrl := range this.ctrlHash {
-		jsStr := ctrl.String()
-		jsFormatted, err := jsbeautifier.Beautify(&jsStr, options)
-		if err != nil {
-			panic(err)
-		}
-		scriptBuffer.WriteString(jsFormatted)
-		scriptBuffer.WriteString("\n")
-	}
-	scriptBuffer.WriteString("</script>")
-	doc.Find("body").AppendHtml(scriptBuffer.String())
-
 	var cssBuffer bytes.Buffer
 	cssBuffer.WriteString("<style>")
-	for _, plate := range this.plateHash {
-		for _, css := range plate.cssList {
-			if css.isUsed {
+
+	printedCtrl := make(map[*Controller]bool)
+	printedPlate := make(map[*Plate]bool)
+	for _, plate := range usedPlateList {
+		if _, has := printedPlate[plate]; !has {
+			printedPlate[plate] = true
+			for _, css := range plate.cssList {
 				cssBuffer.WriteString(css.String())
 				cssBuffer.WriteString("\n")
 			}
+			for _, ctrl := range plate.ctrlList {
+				if _, has := printedCtrl[ctrl]; !has {
+					printedCtrl[ctrl] = true
+					jsStr := ctrl.String()
+					jsFormatted, err := jsbeautifier.Beautify(&jsStr, options)
+					if err != nil {
+						panic(err)
+					}
+					scriptBuffer.WriteString(jsFormatted)
+					scriptBuffer.WriteString("\n")
+				}
+			}
 		}
 	}
+	scriptBuffer.WriteString("</script>")
+	doc.Find("body").AppendHtml(scriptBuffer.String())
 	cssBuffer.WriteString("</style>")
 	doc.Find("head").AppendHtml(cssBuffer.String())
 
@@ -149,20 +145,23 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 }
 
 type Plate struct {
-	Id      int64
-	Name    string
-	jNode   *goquery.Selection
-	cssList []*Css
+	Id       int64
+	Name     string
+	jNode    *goquery.Selection
+	cssList  []*Css
+	ctrlList []*Controller
 }
 
 func NewPlate(Id int64) *Plate {
 	return &Plate{
-		Id:      Id,
-		cssList: make([]*Css, 0),
+		Id:       Id,
+		cssList:  make([]*Css, 0),
+		ctrlList: make([]*Controller, 0),
 	}
 }
 
-func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) {
+func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) (usedPlateList []*Plate) {
+	usedPlateList = make([]*Plate, 0)
 	jTarget.Find(plate.Name).Each(func(idx int, jPlate *goquery.Selection) {
 		/*
 			argList := make([]string, 0)
@@ -176,9 +175,10 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		plate.ApplyCss(jClone, false)
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
-				this.replacePlate(p, jClone)
+				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
 			}
 		}
+		usedPlateList = append(usedPlateList, plate)
 		plate.ApplyCss(jClone, true)
 		/*
 			htmlStr, err := clone.Html()
@@ -216,6 +216,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 			} else {
 				ctrl = this.ctrlHash[ctrlName]
 			}
+			plate.ctrlList = append(plate.ctrlList, ctrl)
 
 			if injectStr, has := jScript.Attr("inject"); has {
 				injectList := strings.Split(injectStr, ",")
@@ -247,6 +248,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 
 		jPlate.ReplaceWithSelection(jClone.Children())
 	})
+	return
 }
 
 func (this *Plate) ApplyCss(jPlate *goquery.Selection, inherit bool) {
@@ -262,7 +264,6 @@ func (this *Plate) ApplyCss(jPlate *goquery.Selection, inherit bool) {
 				jPlate.Find(selector).Each(func(idx int, jObj *goquery.Selection) {
 					if !jObj.HasClass(class) {
 						jObj.AddClass(class)
-						css.isUsed = true
 						ctx.isUsed = true
 						if !strings.HasSuffix(ctx.selector, class) {
 							ctx.selector = fmt.Sprintf("%s.%s", ctx.selector, class)
@@ -409,7 +410,6 @@ func NewCssContext(Id int64) *CssContext {
 type Css struct {
 	Id        int64
 	root      *CssContext
-	isUsed    bool
 	inherit   bool
 	contextId int64
 }
