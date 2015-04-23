@@ -233,7 +233,10 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 				injectList := strings.Split(injectStr, ",")
 				for _, v := range injectList {
 					inject := strings.TrimSpace(v)
-					ctrl.InjectHash[inject] = true
+					if _, has := ctrl.InjectHash[inject]; !has {
+						ctrl.injectList = append(ctrl.injectList, inject)
+						ctrl.InjectHash[inject] = true
+					}
 				}
 			}
 
@@ -289,7 +292,8 @@ func (this *Plate) ApplyCss(jPlate *goquery.Selection, inherit bool) {
 type Controller struct {
 	Id            int64
 	EventHandlers []*EventHandler
-	InjectHash    map[string]bool
+	injectHash    map[string]bool
+	injectList    []string
 }
 
 type EventHandler struct {
@@ -303,7 +307,8 @@ func NewController(Id int64) *Controller {
 	return &Controller{
 		Id:            Id,
 		EventHandlers: make([]*EventHandler, 0),
-		InjectHash:    make(map[string]bool),
+		injectHash:    make(map[string]bool),
+		injectList:    make([]string, 0),
 	}
 }
 
@@ -318,13 +323,13 @@ func (this *Controller) NewEventHandler() *EventHandler {
 func (this *Controller) String() string {
 	var buffer bytes.Buffer
 	var injectBuffer bytes.Buffer
-	for k, _ := range this.InjectHash {
+	for _, k := range this.injectList {
 		injectBuffer.WriteString(", ")
 		injectBuffer.WriteString(k)
 	}
 	injectStr := injectBuffer.String()
 	var injectQuoteBuffer bytes.Buffer
-	for k, _ := range this.InjectHash {
+	for _, k := range this.injectList {
 		injectQuoteBuffer.WriteString("', '")
 		injectQuoteBuffer.WriteString(k)
 	}
