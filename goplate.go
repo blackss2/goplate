@@ -181,7 +181,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jChild.Remove()
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
-				jCloneChild.AppendSelection(jChild.Clone())
+				jCloneChild.Eq(0).AppendSelection(jChild.Clone())
 			})
 		})
 		for _, p := range this.plateHash {
@@ -192,7 +192,6 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		usedPlateList = append(usedPlateList, plate)
 		plate.ApplyCss(jCloneParent, true)
 		jClone.Remove()
-
 		/*
 			htmlStr, err := clone.Html()
 			if err != nil {
