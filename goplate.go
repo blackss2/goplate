@@ -206,7 +206,11 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 		for _, attr := range jPlate.Nodes[0].Attr {
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
-				jCloneChild.SetAttr(attr.Key, attr.Val)
+				if strings.ToLower(attr.Key) == "class" {
+					jCloneChild.AddClass(attr.Val)
+				} else {
+					jCloneChild.SetAttr(attr.Key, attr.Val)
+				}
 			})
 		}
 
