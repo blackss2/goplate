@@ -72,6 +72,7 @@ func (this *PlateLoader) Load(src io.Reader) {
 				css.inherit = true
 			}
 		})
+		plate.ApplyCss(plate.jNode, false)
 	})
 }
 
@@ -172,12 +173,6 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 
 		jClone := plate.jNode.Clone()
-		jClone.AppendHtml("<div class='_sys_clone_parent_'></div>")
-		jCloneParent := jClone.Find("._sys_clone_parent_")
-		jCloneParent.Remove()
-		jCloneParent.AppendSelection(jClone)
-
-		plate.ApplyCss(jCloneParent, false)
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jChild.Remove()
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
@@ -190,7 +185,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
-		plate.ApplyCss(jCloneParent, true)
+		plate.ApplyCss(jClone, true)
 		jClone.Remove()
 		/*
 			htmlStr, err := clone.Html()
@@ -258,7 +253,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 			event.Body = jScript.Text()
 		})
 
-		jPlate.ReplaceWithSelection(jClone.Children())
+		jPlate.ReplaceWithSelection(jClone.Children().Remove())
 	})
 	return
 }
