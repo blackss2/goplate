@@ -233,9 +233,9 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 				injectList := strings.Split(injectStr, ",")
 				for _, v := range injectList {
 					inject := strings.TrimSpace(v)
-					if _, has := ctrl.InjectHash[inject]; !has {
+					if _, has := ctrl.injectHash[inject]; !has {
 						ctrl.injectList = append(ctrl.injectList, inject)
-						ctrl.InjectHash[inject] = true
+						ctrl.injectHash[inject] = true
 					}
 				}
 			}
