@@ -511,3 +511,4 @@ imoprt _ "github.com/blackss2/goplate"<br>
 "app/goplates" : file for plates(excpet views folder)<br>
 "app/goplates/views" : files -> compile -> create result file at "app/views"<br>
 <br>
+exmaple : https://github.com/blackss2/goplate_revel_example<br>
