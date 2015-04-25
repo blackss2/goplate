@@ -57,7 +57,9 @@ itemlist.html
 		</script>
 	</ul>
 </plate>
-
+```
+shop.html
+```html
 <plate name="shop">
 	<div>
 		<itemList>
