@@ -497,7 +497,7 @@ index.html
 	</body>
 </html>
 ```
-1) script at element in plate will attach ng-controller and will be replaced to ng-[event]="[functionName]([arguments])"<br>
+1) script at element in plate will attach ng-controller and will be replaced to ng-eventName="functionName(arguments)"<br>
 2) css in plate will affect only current plates DOM<br>
 3) css has inhert="true" attribute in plate will affect from self to all child DOM<br>
 4) plates in plate will be replaced(recursive problem is not solved yet)<br>
