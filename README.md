@@ -1,4 +1,11 @@
 # goplate
+# Thanks for libraries
+https://github.com/PuerkitoBio/goquery<br>
+https://github.com/yosssi/gohtml<br>
+https://github.com/ditashi/jsbeautifier-go/jsbeautifier<br>
+https://github.com/gorilla/css/scanner<br>
+https://github.com/revel/revel<br>
+<br>
 # / : template style Front-end preprocessor for angularjs
 - Concept
 1) embeded css<br>
