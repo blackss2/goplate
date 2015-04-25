@@ -26,16 +26,22 @@ less or scss support(or both with type attribute)<br>
 dependency management<br>
 holder & place in plate<br>
 <br>
+- Bug<br>
+DOM that is inserted to plate's child does not secure order<br>
+Recursive will be shutdown program<br>
+<br>
 ## Before Compile
+item.html
 ```html
-
 <plate name="item">
 	<li>
 		Product Name : {{item.name}}
 		Count : {{item.count}}
 	</li>
 </plate>
-
+```
+itemlist.html
+```html
 <plate name="itemList">
 	<css>
 	</css>
@@ -193,9 +199,9 @@ holder & place in plate<br>
 		</script>
 	</div>
 </plate>
-
-
-
+```
+index.html
+```html
 <html>
 <head>
 	<meta charset="utf8" />
@@ -209,9 +215,9 @@ holder & place in plate<br>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
 </html>
 ```
+
 ## After Compile
 ```HTML
-<!-- subject.html -->
 <html>
 	<head>
 		<meta charset="utf8"/>
@@ -489,11 +495,17 @@ holder & place in plate<br>
 	</body>
 </html>
 ```
-
+1) script at element in plate will attach ng-controller and will be replaced to ng-[event]="[functionName]([arguments])"<br>
+2) css in plate will affect only current plates DOM<br>
+3) css has inhert="true" attribute in plate will affect from self to all child DOM<br>
+4) plates in plate will be replaced(recursive problem is not solved yet)<br>
+5) plates in DOM can have attribute & child, and they will be inserted & evaludated<br>
+<br>
 # /revel : revel intergration
-add this code into "app/init.go" file
-
-imoprt _ "github.com/blackss2/goplate"
-
-"app/goplates" : file for plates(excpet views folder)
-"app/goplates/views" : files -> compile -> create result file at "app/views"
+add this code into "app/init.go" file<br>
+<br>
+imoprt _ "github.com/blackss2/goplate"<br>
+<br>
+"app/goplates" : file for plates(excpet views folder)<br>
+"app/goplates/views" : files -> compile -> create result file at "app/views"<br>
+<br>
