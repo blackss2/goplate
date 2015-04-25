@@ -215,9 +215,7 @@ index.html
 <head>
 	<meta charset="utf8" />
 </head>
-<body ng-app>
-<app>
-</app>
+<body>
 <shop>
 </shop>
 </body>
