@@ -15,13 +15,11 @@ import (
 
 type PlateLoader struct {
 	plateHash map[string]*Plate
-	ctrlHash  map[string]*Controller
 }
 
 func NewPlateLoader() *PlateLoader {
 	return &PlateLoader{
 		plateHash: make(map[string]*Plate),
-		ctrlHash:  make(map[string]*Controller),
 	}
 }
 
@@ -99,8 +97,9 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 	doc.Find("body").SetAttr("ng-app", "myApp")
 
 	usedPlateList := make([]*Plate, 0)
+	ctrlHash := make(map[string]*Controller)
 	for _, p := range this.plateHash {
-		usedPlateList = append(usedPlateList, this.replacePlate(p, doc.Find("body"), false)...)
+		usedPlateList = append(usedPlateList, this.replacePlate(ctrlHash, p, doc.Find("body"), false)...)
 	}
 
 	var scriptBuffer bytes.Buffer
@@ -119,7 +118,7 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 				cssBuffer.WriteString(css.String())
 				cssBuffer.WriteString("\n")
 			}
-			for _, ctrl := range plate.ctrlList {
+			for _, ctrl := range ctrlHash {
 				if _, has := printedCtrl[ctrl]; !has {
 					printedCtrl[ctrl] = true
 					jsStr := ctrl.String()
@@ -150,18 +149,16 @@ type Plate struct {
 	Name     string
 	jNode    *goquery.Selection
 	cssList  []*Css
-	ctrlList []*Controller
 }
 
 func NewPlate(Id int64) *Plate {
 	return &Plate{
 		Id:       Id,
 		cssList:  make([]*Css, 0),
-		ctrlList: make([]*Controller, 0),
 	}
 }
 
-func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection, isPlate bool) (usedPlateList []*Plate) {
+func (this *PlateLoader) replacePlate(ctrlHash map[string]*Controller, plate *Plate, jTarget *goquery.Selection, isPlate bool) (usedPlateList []*Plate) {
 	usedPlateList = make([]*Plate, 0)
 	jTarget.Find(plate.Name).Each(func(idx int, jPlate *goquery.Selection) {
 		/*
@@ -177,12 +174,12 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection, 
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jChild.Remove()
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
-				jCloneChild.Eq(0).AppendSelection(jChild.Clone())
+				jCloneChild.AppendSelection(jChild.Clone())
 			})
 		})
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
-				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone, true)...)
+				usedPlateList = append(usedPlateList, this.replacePlate(ctrlHash, p, jClone, true)...)
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
@@ -221,15 +218,14 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection, 
 
 			var ctrl *Controller
 			if ctrlName, has := jParent.Attr("ng-controller"); !has {
-				ctrl = NewController(int64(len(this.ctrlHash) + 1)) //TEMP
+				ctrl = NewController(int64(len(ctrlHash) + 1)) //TEMP
 				ctrlName = fmt.Sprintf("Ctrl_%d", ctrl.Id)
 				jParent.SetAttr("ng-controller", ctrlName)
-				this.ctrlHash[ctrlName] = ctrl
+				ctrlHash[ctrlName] = ctrl
 			} else {
-				ctrl = this.ctrlHash[ctrlName]
+				ctrl = ctrlHash[ctrlName]
 			}
-			plate.ctrlList = append(plate.ctrlList, ctrl)
-
+			
 			if injectStr, has := jScript.Attr("inject"); has {
 				injectList := strings.Split(injectStr, ",")
 				for _, v := range injectList {
