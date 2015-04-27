@@ -100,7 +100,7 @@ func (this *PlateLoader) Apply(src io.Reader) string {
 
 	usedPlateList := make([]*Plate, 0)
 	for _, p := range this.plateHash {
-		usedPlateList = append(usedPlateList, this.replacePlate(p, doc.Find("body"))...)
+		usedPlateList = append(usedPlateList, this.replacePlate(p, doc.Find("body"), false)...)
 	}
 
 	var scriptBuffer bytes.Buffer
@@ -161,7 +161,7 @@ func NewPlate(Id int64) *Plate {
 	}
 }
 
-func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) (usedPlateList []*Plate) {
+func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection, isPlate bool) (usedPlateList []*Plate) {
 	usedPlateList = make([]*Plate, 0)
 	jTarget.Find(plate.Name).Each(func(idx int, jPlate *goquery.Selection) {
 		/*
@@ -173,6 +173,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		*/
 
 		jClone := plate.jNode.Clone()
+		jPlate.Find("script").AddClass("inserted")
 		jPlate.Children().Each(func(idx int, jChild *goquery.Selection) {
 			jChild.Remove()
 			jClone.Children().Each(func(idx int, jCloneChild *goquery.Selection) {
@@ -181,7 +182,7 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 		})
 		for _, p := range this.plateHash {
 			if p.Name != plate.Name {
-				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone)...)
+				usedPlateList = append(usedPlateList, this.replacePlate(p, jClone, true)...)
 			}
 		}
 		usedPlateList = append(usedPlateList, plate)
@@ -258,6 +259,10 @@ func (this *PlateLoader) replacePlate(plate *Plate, jTarget *goquery.Selection) 
 				}
 			}
 			event.Body = jScript.Text()
+
+			if !isPlate && jScript.HasClass("inserted") {
+				event.insertedPlate = true
+			}
 		})
 
 		jPlate.ReplaceWithSelection(jClone.Children().Remove())
@@ -297,10 +302,11 @@ type Controller struct {
 }
 
 type EventHandler struct {
-	Id   int64
-	Type string
-	Body string
-	Args string
+	Id            int64
+	Type          string
+	Body          string
+	Args          string
+	insertedPlate bool
 }
 
 func NewController(Id int64) *Controller {
@@ -335,6 +341,7 @@ func (this *Controller) String() string {
 	}
 	injectQuoteStr := injectQuoteBuffer.String()
 	buffer.WriteString(fmt.Sprintf(`myApp.controller('Ctrl_%d', ['$scope', '$rootScope%s', function($scope, $rootScope%s) {`, this.Id, injectQuoteStr, injectStr))
+	aliveEventHandlers := make([]*EventHandler, 0)
 	for _, event := range this.EventHandlers {
 		if len(event.Type) > 0 {
 			buffer.WriteString("\n")
@@ -345,7 +352,11 @@ func (this *Controller) String() string {
 			buffer.WriteString("}")
 			buffer.WriteString("\n")
 		}
+		if !event.insertedPlate {
+			aliveEventHandlers = append(aliveEventHandlers, event)
+		}
 	}
+	this.EventHandlers = aliveEventHandlers
 	buffer.WriteString(`}]);`)
 	return buffer.String()
 }
