@@ -54,7 +54,7 @@ func (this *PlateLoader) Load(src io.Reader) {
 			plate.Name = strings.ToLower(name)
 		}
 		if _, has := this.plateHash[plate.Name]; has {
-			panic("plate collision")
+			panic("plate collision : " + plate.Name)
 		}
 		this.plateHash[plate.Name] = plate
 		plate.jNode = jPlate
