@@ -1,4 +1,4 @@
-[Deplecated] lack of base concept
+# [Deplecated] lack of base concept
 
 # goplate
 # Thanks for libraries
