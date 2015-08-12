@@ -1,3 +1,5 @@
+[Deplecated] lack of base concept
+
 # goplate
 # Thanks for libraries
 https://github.com/PuerkitoBio/goquery<br>
