@@ -39,8 +39,10 @@ holder & place in plate<br>
 DOM that is inserted to plate's child does not secure order<br>
 Recursive will be shutdown program<br>
 <br>
+
 ## Before Compile
 item.html
+
 ~~~ html
 <plate name="item">
 	<li>
@@ -49,7 +51,9 @@ item.html
 	</li>
 </plate>
 ~~~
+
 itemlist.html
+
 ~~~ html
 <plate name="itemList">
 	<css>
@@ -67,7 +71,9 @@ itemlist.html
 	</ul>
 </plate>
 ~~~
+
 shop.html
+
 ~~~ html
 <plate name="shop">
 	<div>
@@ -211,7 +217,9 @@ shop.html
 	</div>
 </plate>
 ~~~
+
 index.html
+
 ~~~ html
 <html>
 <head>
@@ -504,6 +512,7 @@ index.html
 	</body>
 </html>
 ~~~
+
 1) script at element in plate will attach ng-controller and will be replaced to ng-eventName="functionName(arguments)"<br>
 2) css in plate will affect only current plates DOM<br>
 3) css has inhert="true" attribute in plate will affect from self to all child DOM<br>
