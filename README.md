@@ -41,16 +41,16 @@ Recursive will be shutdown program<br>
 <br>
 ## Before Compile
 item.html
-```html
+~~~ html
 <plate name="item">
 	<li>
 		Product Name : {{item.name}}
 		Count : {{item.count}}
 	</li>
 </plate>
-```
+~~~
 itemlist.html
-```html
+~~~ html
 <plate name="itemList">
 	<css>
 	</css>
@@ -66,9 +66,9 @@ itemlist.html
 		</script>
 	</ul>
 </plate>
-```
+~~~
 shop.html
-```html
+~~~ html
 <plate name="shop">
 	<div>
 		<itemList>
@@ -210,9 +210,9 @@ shop.html
 		</script>
 	</div>
 </plate>
-```
+~~~
 index.html
-```html
+~~~ html
 <html>
 <head>
 	<meta charset="utf8" />
@@ -223,10 +223,10 @@ index.html
 </body>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
 </html>
-```
+~~~
 
 ## After Compile
-```HTML
+~~~ HTML
 <html>
 	<head>
 		<meta charset="utf8"/>
@@ -503,7 +503,7 @@ index.html
 		</script>
 	</body>
 </html>
-```
+~~~
 1) script at element in plate will attach ng-controller and will be replaced to ng-eventName="functionName(arguments)"<br>
 2) css in plate will affect only current plates DOM<br>
 3) css has inhert="true" attribute in plate will affect from self to all child DOM<br>
